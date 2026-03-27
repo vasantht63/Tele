@@ -1,0 +1,30 @@
+# Fly.io configuration for Telegram Channel Downloader
+app = "tg-channel-downloader"
+primary_region = "sin" # Singapore — closest to India
+
+[build]
+
+[env]
+  PORT = "8080"
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  auto_stop_machines = false   # keep always-on (important for SSE + MTProto)
+  auto_start_machines = true
+  min_machines_running = 1
+
+  [http_service.concurrency]
+    type = "requests"
+    hard_limit = 25
+    soft_limit = 20
+
+[[vm]]
+  memory = "512mb"
+  cpu_kind = "shared"
+  cpus = 1
+
+# Persistent volume for temp downloads (1GB)
+[mounts]
+  source = "tg_downloads"
+  destination = "/app/downloads"
