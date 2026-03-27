@@ -1,0 +1,716 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Telegram Channel Downloader</title>
+<meta name="description" content="Download all files from any Telegram channel in one click."/>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0a0e1a;
+    --surface: rgba(255,255,255,0.04);
+    --surface-hover: rgba(255,255,255,0.08);
+    --border: rgba(255,255,255,0.09);
+    --accent: #2AABEE;
+    --accent2: #7B5EA7;
+    --success: #30d158;
+    --error: #ff453a;
+    --warn: #ffd60a;
+    --text: #f0f4ff;
+    --muted: rgba(240,244,255,0.45);
+    --radius: 16px;
+    --radius-sm: 10px;
+    --glow: 0 0 40px rgba(42,171,238,0.18);
+  }
+
+  html { scroll-behavior: smooth; }
+  body {
+    font-family: 'Inter', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+  body::before, body::after {
+    content: '';
+    position: fixed;
+    border-radius: 50%;
+    filter: blur(120px);
+    z-index: 0;
+    pointer-events: none;
+  }
+  body::before {
+    width: 500px; height: 500px;
+    background: radial-gradient(circle, rgba(42,171,238,0.12) 0%, transparent 70%);
+    top: -100px; left: -100px;
+  }
+  body::after {
+    width: 400px; height: 400px;
+    background: radial-gradient(circle, rgba(123,94,167,0.12) 0%, transparent 70%);
+    bottom: -100px; right: -100px;
+  }
+
+  #app {
+    position: relative;
+    z-index: 1;
+    max-width: 760px;
+    margin: 0 auto;
+    padding: 24px 16px 80px;
+  }
+
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 36px;
+    padding-top: 8px;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+  .logo { display: flex; align-items: center; gap: 12px; }
+  .logo-icon {
+    width: 44px; height: 44px;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 22px;
+    box-shadow: var(--glow);
+  }
+  .logo h1 {
+    font-size: 1.2rem; font-weight: 700;
+    background: linear-gradient(90deg, var(--accent), #a78bfa);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  .logo span { font-size: 0.75rem; color: var(--muted); display: block; font-weight: 400; }
+
+  #user-badge {
+    display: none;
+    align-items: center;
+    gap: 10px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 50px;
+    padding: 6px 14px 6px 8px;
+    font-size: 0.85rem;
+  }
+  #user-badge .avatar {
+    width: 28px; height: 28px;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px; font-weight: 700;
+  }
+  #logout-btn {
+    background: none; border: none; color: var(--error);
+    cursor: pointer; font-size: 0.75rem; margin-left: 4px;
+    padding: 2px 6px; border-radius: 6px; transition: background 0.2s;
+  }
+  #logout-btn:hover { background: rgba(255,69,58,0.12); }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 28px;
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    margin-bottom: 20px;
+    transition: border-color 0.3s;
+    animation: fadeUp 0.4s ease both;
+  }
+  .card:hover { border-color: rgba(255,255,255,0.14); }
+
+  .card-title {
+    font-size: 0.7rem;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 18px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .card-title::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+
+  /* Steps */
+  .steps { display: flex; gap: 0; margin-bottom: 28px; position: relative; }
+  .steps::before {
+    content: '';
+    position: absolute;
+    top: 14px; left: 14px; right: 14px;
+    height: 2px;
+    background: var(--border);
+    z-index: 0;
+  }
+  .step { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 6px; position: relative; z-index: 1; }
+  .step-dot {
+    width: 28px; height: 28px;
+    border-radius: 50%;
+    background: var(--bg);
+    border: 2px solid var(--border);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 0.75rem; font-weight: 600;
+    color: var(--muted);
+    transition: all 0.3s;
+  }
+  .step.active .step-dot { background: var(--accent); border-color: var(--accent); color: #fff; box-shadow: 0 0 0 4px rgba(42,171,238,0.2); }
+  .step.done .step-dot { background: var(--success); border-color: var(--success); color: #fff; }
+  .step-label { font-size: 0.65rem; color: var(--muted); font-weight: 500; }
+  .step.active .step-label { color: var(--accent); }
+  .step.done .step-label { color: var(--success); }
+
+  /* Forms */
+  label { display: block; font-size: 0.8rem; font-weight: 500; color: var(--muted); margin-bottom: 6px; }
+  input[type=text], input[type=tel], input[type=password] {
+    width: 100%;
+    background: rgba(0,0,0,0.3);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    color: var(--text);
+    font-family: 'Inter', sans-serif;
+    font-size: 0.92rem;
+    padding: 13px 16px;
+    transition: border-color 0.25s, box-shadow 0.25s;
+    outline: none;
+    -webkit-appearance: none;
+  }
+  input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(42,171,238,0.15); }
+  input::placeholder { color: rgba(240,244,255,0.3); }
+  .input-group { margin-bottom: 14px; }
+  .input-hint { font-size: 0.72rem; color: var(--muted); margin-top: 5px; }
+  .input-hint a { color: var(--accent); text-decoration: none; }
+
+  /* Buttons */
+  .btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+    font-family: 'Inter', sans-serif; font-size: 0.92rem; font-weight: 600;
+    padding: 13px 24px; border-radius: var(--radius-sm); border: none;
+    cursor: pointer; transition: all 0.2s; outline: none; white-space: nowrap;
+  }
+  .btn:active { transform: scale(0.97); }
+  .btn-primary { background: linear-gradient(135deg, var(--accent), #1a8fd1); color: #fff; width: 100%; box-shadow: 0 4px 20px rgba(42,171,238,0.3); }
+  .btn-primary:hover { box-shadow: 0 6px 28px rgba(42,171,238,0.45); transform: translateY(-1px); }
+  .btn-primary:disabled { opacity: 0.5; pointer-events: none; }
+  .btn-success { background: linear-gradient(135deg, var(--success), #1fa143); color: #fff; width: 100%; box-shadow: 0 4px 20px rgba(48,209,88,0.25); }
+  .btn-success:hover { box-shadow: 0 6px 28px rgba(48,209,88,0.4); transform: translateY(-1px); }
+  .btn-success:disabled { opacity: 0.5; pointer-events: none; }
+  .btn-ghost { background: var(--surface); border: 1px solid var(--border); color: var(--text); }
+  .btn-ghost:hover { background: var(--surface-hover); }
+  .btn-sm { font-size: 0.78rem; padding: 7px 14px; border-radius: 8px; }
+
+  #otp-input { font-size: 1.4rem; letter-spacing: 0.2em; text-align: center; font-weight: 700; }
+
+  .alert { display: none; padding: 12px 16px; border-radius: var(--radius-sm); font-size: 0.82rem; font-weight: 500; margin-bottom: 14px; line-height: 1.5; }
+  .alert-error { background: rgba(255,69,58,0.12); border: 1px solid rgba(255,69,58,0.3); color: #ff6b60; }
+  .alert-success { background: rgba(48,209,88,0.10); border: 1px solid rgba(48,209,88,0.3); color: #4cd96e; }
+  .alert-info { background: rgba(42,171,238,0.10); border: 1px solid rgba(42,171,238,0.3); color: var(--accent); }
+
+  .spinner { display: inline-block; width: 16px; height: 16px; border: 2px solid rgba(255,255,255,0.3); border-top-color: #fff; border-radius: 50%; animation: spin 0.75s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  @keyframes fadeUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+  @keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:0.5; } }
+
+  /* File list */
+  #file-summary { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; flex-wrap: wrap; gap: 10px; }
+  .summary-stats { display: flex; gap: 10px; flex-wrap: wrap; }
+  .stat-chip { background: var(--surface); border: 1px solid var(--border); border-radius: 50px; padding: 4px 12px; font-size: 0.75rem; font-weight: 500; color: var(--muted); }
+  .stat-chip span { color: var(--text); font-weight: 600; }
+
+  #files-container { display: flex; flex-direction: column; gap: 8px; max-height: 340px; overflow-y: auto; padding-right: 4px; }
+  #files-container::-webkit-scrollbar { width: 4px; }
+  #files-container::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+  .file-item {
+    display: flex; align-items: center; gap: 12px;
+    padding: 12px 14px;
+    background: rgba(0,0,0,0.2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    transition: border-color 0.2s, background 0.2s;
+    position: relative; overflow: hidden;
+  }
+  .file-item.active-dl { border-color: rgba(42,171,238,0.5); animation: pulse 1.5s ease infinite; }
+  .file-item.done { border-color: rgba(48,209,88,0.4); }
+  .file-item.error-dl { border-color: rgba(255,69,58,0.4); }
+
+  .file-progress-bg {
+    position: absolute; inset: 0;
+    background: linear-gradient(90deg, rgba(42,171,238,0.07) 0%, transparent 100%);
+    transform-origin: left; transform: scaleX(0);
+    transition: transform 0.3s ease; pointer-events: none;
+  }
+  .file-item.done .file-progress-bg { background: rgba(48,209,88,0.05); transform: scaleX(1); }
+
+  .file-icon { font-size: 22px; width: 36px; text-align: center; flex-shrink: 0; }
+  .file-info { flex: 1; min-width: 0; }
+  .file-name { font-size: 0.85rem; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .file-meta { font-size: 0.72rem; color: var(--muted); margin-top: 2px; display: flex; gap: 8px; flex-wrap: wrap; }
+  .file-status { font-size: 0.72rem; font-weight: 600; flex-shrink: 0; }
+  .status-done { color: var(--success); }
+  .status-active { color: var(--accent); }
+  .status-error { color: var(--error); }
+  .status-pending { color: var(--muted); }
+
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 50px; font-size: 0.65rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; }
+  .badge-video { background: rgba(123,94,167,0.2); color: #c084fc; border: 1px solid rgba(123,94,167,0.3); }
+  .badge-audio { background: rgba(42,171,238,0.15); color: var(--accent); border: 1px solid rgba(42,171,238,0.25); }
+  .badge-image { background: rgba(255,214,10,0.12); color: var(--warn); border: 1px solid rgba(255,214,10,0.25); }
+  .badge-file  { background: rgba(240,244,255,0.06); color: var(--muted); border: 1px solid var(--border); }
+
+  /* Overall progress */
+  #overall-progress { display: none; margin-top: 16px; }
+  .progress-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; font-size: 0.8rem; }
+  .progress-track { height: 8px; background: rgba(255,255,255,0.07); border-radius: 50px; overflow: hidden; }
+  .progress-fill { height: 100%; background: linear-gradient(90deg, var(--accent), #7B5EA7); border-radius: 50px; transition: width 0.4s ease; width: 0%; }
+  .progress-fill.complete { background: linear-gradient(90deg, var(--success), #1fa143); }
+
+  /* Disk indicator */
+  .disk-badge {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: rgba(255,214,10,0.08); border: 1px solid rgba(255,214,10,0.2);
+    border-radius: 8px; padding: 8px 14px; font-size: 0.78rem; color: var(--warn);
+    margin-bottom: 16px; width: 100%;
+  }
+
+  /* Channel input */
+  .channel-input-wrap { position: relative; margin-bottom: 14px; }
+  .channel-input-wrap input { padding-left: 46px; }
+  .channel-input-icon { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); font-size: 18px; pointer-events: none; opacity: 0.5; }
+
+  .section { display: none; }
+  .section.active { display: block; }
+
+  .btn-row { display: flex; gap: 10px; flex-wrap: wrap; }
+  .btn-row .btn { flex: 1; min-width: 140px; }
+
+  footer { text-align: center; font-size: 0.72rem; color: var(--muted); margin-top: 32px; padding-bottom: 16px; }
+  footer a { color: var(--accent); text-decoration: none; }
+
+  @media (max-width: 480px) {
+    .card { padding: 20px 16px; }
+    header { margin-bottom: 24px; }
+    #files-container { max-height: 260px; }
+  }
+</style>
+</head>
+<body>
+<div id="app">
+
+  <header>
+    <div class="logo">
+      <div class="logo-icon">✈️</div>
+      <div>
+        <h1>TG Downloader</h1>
+        <span>Telegram Channel File Downloader</span>
+      </div>
+    </div>
+    <div id="user-badge">
+      <div class="avatar" id="avatar-letter">U</div>
+      <span id="username-display">user</span>
+      <button id="logout-btn" onclick="logout()">Sign out</button>
+    </div>
+  </header>
+
+  <div class="steps">
+    <div class="step active" id="step1-dot"><div class="step-dot">1</div><div class="step-label">Sign In</div></div>
+    <div class="step" id="step2-dot"><div class="step-dot">2</div><div class="step-label">Verify</div></div>
+    <div class="step" id="step3-dot"><div class="step-dot">3</div><div class="step-label">Download</div></div>
+  </div>
+
+  <!-- STEP 1: LOGIN -->
+  <div id="section-login" class="section active">
+    <div class="card">
+      <div class="card-title">📱 Sign in to Telegram</div>
+      <div id="alert-login" class="alert alert-error"></div>
+      <div class="input-group">
+        <label>Phone Number</label>
+        <input type="tel" id="phone-input" placeholder="+91 98765 43210" autocomplete="tel"/>
+        <div class="input-hint">Include country code &nbsp;·&nbsp; API credentials loaded from <code style="background:rgba(255,255,255,0.06);padding:1px 5px;border-radius:4px;">.env</code> · <a href="https://my.telegram.org" target="_blank">Get API keys</a></div>
+      </div>
+      <button class="btn btn-primary" id="send-code-btn" onclick="sendCode()"><span>Send OTP</span></button>
+    </div>
+  </div>
+
+  <!-- STEP 2: OTP -->
+  <div id="section-otp" class="section">
+    <div class="card">
+      <div class="card-title">🔐 Verify Code</div>
+      <div id="alert-otp" class="alert alert-error"></div>
+      <div id="alert-otp-info" class="alert alert-info" style="display:block">Check Telegram app or SMS for your code.</div>
+      <div class="input-group">
+        <label>One-Time Code</label>
+        <input type="text" id="otp-input" maxlength="8" placeholder="· · · · · ·" inputmode="numeric" autocomplete="one-time-code"/>
+      </div>
+      <div id="twofa-group" class="input-group" style="display:none">
+        <label>2FA Cloud Password</label>
+        <input type="password" id="password-input" placeholder="Your cloud password"/>
+      </div>
+      <button class="btn btn-primary" id="verify-btn" onclick="verifyCode()"><span>Verify & Continue</span></button>
+      <button class="btn btn-ghost" style="width:100%;margin-top:10px" onclick="backToLogin()">← Back</button>
+    </div>
+  </div>
+
+  <!-- STEP 3: CHANNEL -->
+  <div id="section-channel" class="section">
+    <div class="card">
+      <div class="card-title">🔗 Channel Link</div>
+
+      <!-- Disk-save info badge -->
+      <div class="disk-badge">
+        💾 Each file is downloaded → sent to your device → deleted from server. Only 1 file uses disk space at a time.
+      </div>
+
+      <div id="alert-channel" class="alert alert-error"></div>
+
+      <div class="channel-input-wrap">
+        <span class="channel-input-icon">🔗</span>
+        <input type="text" id="channel-input" placeholder="https://t.me/yourchannel  or  @username" autocomplete="off" autocorrect="off" autocapitalize="off"/>
+      </div>
+
+      <div class="btn-row">
+        <button class="btn btn-primary" id="fetch-btn" onclick="fetchFiles()"><span>🔍 Fetch Files</span></button>
+        <button class="btn btn-success" id="download-btn" onclick="downloadAll()" style="display:none"><span>⬇ Download All</span></button>
+      </div>
+    </div>
+
+    <!-- File list -->
+    <div class="card" id="files-card" style="display:none">
+      <div class="card-title">📂 Files</div>
+
+      <div id="file-summary">
+        <div class="summary-stats" id="stats-row"></div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <button class="btn btn-ghost btn-sm" onclick="selectAll(true)">All</button>
+          <button class="btn btn-ghost btn-sm" onclick="selectAll(false)">None</button>
+        </div>
+      </div>
+
+      <div id="files-container"></div>
+
+      <div id="overall-progress">
+        <div class="progress-header">
+          <span id="progress-label">Downloading…</span>
+          <span id="progress-pct">0%</span>
+        </div>
+        <div class="progress-track"><div class="progress-fill" id="progress-fill"></div></div>
+        <div style="font-size:0.72rem;color:var(--muted);margin-top:6px" id="progress-sub"></div>
+      </div>
+    </div>
+  </div>
+
+  <footer>Built with ❤️ — runs locally &amp; on network · <a href="https://my.telegram.org" target="_blank">Get API keys</a></footer>
+</div>
+
+<!-- Hidden anchor for auto-triggering downloads -->
+<a id="auto-dl" style="display:none"></a>
+
+<script>
+const ICONS = { video:'🎬', audio:'🎵', image:'🖼️', file:'📄' };
+let state = {
+  phone: '', files: [],
+  selectedIds: new Set(),
+  total: 0, done: 0,
+  downloading: false,
+  es: null,
+};
+
+// ── Section helpers ───────────────────────────────────────────────────────────
+function showSection(id) {
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+function setStep(n) {
+  [1,2,3].forEach(i => {
+    const el = document.getElementById(`step${i}-dot`);
+    el.classList.remove('active','done');
+    if (i < n) el.classList.add('done');
+    if (i === n) el.classList.add('active');
+  });
+}
+function showAlert(id, msg, type='error') {
+  const el = document.getElementById(id);
+  el.className = `alert alert-${type}`;
+  el.textContent = msg;
+  el.style.display = 'block';
+}
+function hideAlert(id) { const el = document.getElementById(id); if (el) el.style.display = 'none'; }
+function setLoading(id, on, label) {
+  const b = document.getElementById(id);
+  if (!b) return;
+  b.disabled = on;
+  b.innerHTML = on ? `<span class="spinner"></span> ${label}` : label;
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+async function init() {
+  try {
+    const r = await fetch('/api/auth/connect', { method: 'POST' }).then(r => r.json());
+    if (r.ok && r.authorized) setLoggedIn(r.user);
+  } catch(_) {}
+}
+
+function setLoggedIn(user) {
+  const badge = document.getElementById('user-badge');
+  badge.style.display = 'flex';
+  document.getElementById('username-display').textContent = user || 'user';
+  document.getElementById('avatar-letter').textContent = (user || 'U')[0].toUpperCase();
+  showSection('section-channel');
+  setStep(3);
+}
+
+// ── Auth ──────────────────────────────────────────────────────────────────────
+async function sendCode() {
+  hideAlert('alert-login');
+  const phone = document.getElementById('phone-input').value.trim();
+  if (!phone) { showAlert('alert-login', 'Enter your phone number.'); return; }
+  state.phone = phone;
+  setLoading('send-code-btn', true, 'Connecting…');
+  try {
+    const conn = await fetch('/api/auth/connect', { method: 'POST' }).then(r => r.json());
+    if (!conn.ok) { showAlert('alert-login', conn.error); return; }
+    if (conn.authorized) { setLoggedIn(conn.user); return; }
+    const r = await fetch('/api/auth/send-code', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ phone })
+    }).then(r => r.json());
+    if (!r.ok) showAlert('alert-login', r.error);
+    else { showSection('section-otp'); setStep(2); setTimeout(() => document.getElementById('otp-input').focus(), 100); }
+  } catch(e) { showAlert('alert-login', 'Cannot reach server. Is node server.js running?'); }
+  setLoading('send-code-btn', false, '<span>Send OTP</span>');
+}
+
+function backToLogin() { showSection('section-login'); setStep(1); }
+
+async function verifyCode() {
+  hideAlert('alert-otp');
+  const code = document.getElementById('otp-input').value.trim();
+  const password = document.getElementById('password-input').value;
+  if (!code) { showAlert('alert-otp', 'Enter the code.'); return; }
+  setLoading('verify-btn', true, 'Verifying…');
+  try {
+    const r = await fetch('/api/auth/verify', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ code, password: password || undefined })
+    }).then(r => r.json());
+    if (!r.ok) showAlert('alert-otp', r.error);
+    else if (r.need2fa) {
+      document.getElementById('twofa-group').style.display = 'block';
+      showAlert('alert-otp','2FA required — enter your cloud password.','info');
+    } else setLoggedIn(r.user);
+  } catch(e) { showAlert('alert-otp', e.message); }
+  setLoading('verify-btn', false, '<span>Verify & Continue</span>');
+}
+
+async function logout() {
+  await fetch('/api/auth/logout', { method: 'POST' }).catch(()=>{});
+  document.getElementById('user-badge').style.display = 'none';
+  document.getElementById('files-card').style.display = 'none';
+  document.getElementById('download-btn').style.display = 'none';
+  state.files = [];
+  showSection('section-login');
+  setStep(1);
+}
+
+// ── Fetch file list ───────────────────────────────────────────────────────────
+async function fetchFiles() {
+  hideAlert('alert-channel');
+  const link = document.getElementById('channel-input').value.trim();
+  if (!link) { showAlert('alert-channel', 'Paste a channel link first.'); return; }
+  setLoading('fetch-btn', true, '<span class="spinner"></span> Scanning…');
+  document.getElementById('files-card').style.display = 'none';
+  document.getElementById('download-btn').style.display = 'none';
+  try {
+    const r = await fetch('/api/channel/files', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ link })
+    }).then(r => r.json());
+    if (!r.ok) showAlert('alert-channel', r.error);
+    else if (!r.files.length) showAlert('alert-channel', 'No files found in this channel.', 'info');
+    else {
+      state.files = r.files;
+      state.selectedIds = new Set(r.files.map(f => f.id));
+      renderFileList();
+      document.getElementById('files-card').style.display = 'block';
+      document.getElementById('download-btn').style.display = 'flex';
+    }
+  } catch(e) { showAlert('alert-channel', e.message); }
+  setLoading('fetch-btn', false, '<span>🔍 Fetch Files</span>');
+}
+
+// ── Render ────────────────────────────────────────────────────────────────────
+function fmtBytes(b) {
+  b = Number(b);
+  if (!b) return '?';
+  if (b < 1024) return b + ' B';
+  if (b < 1048576) return (b/1024).toFixed(1) + ' KB';
+  return (b/1048576).toFixed(1) + ' MB';
+}
+
+function renderFileList() {
+  const c = document.getElementById('files-container');
+  c.innerHTML = '';
+  const counts = {};
+  let total = 0;
+  state.files.forEach(f => { counts[f.type] = (counts[f.type]||0)+1; total += Number(f.size)||0; });
+
+  document.getElementById('stats-row').innerHTML = `
+    <div class="stat-chip">Total <span>${state.files.length}</span></div>
+    ${counts.video?`<div class="stat-chip">🎬 <span>${counts.video}</span></div>`:''}
+    ${counts.audio?`<div class="stat-chip">🎵 <span>${counts.audio}</span></div>`:''}
+    ${counts.image?`<div class="stat-chip">🖼️ <span>${counts.image}</span></div>`:''}
+    ${counts.file ?`<div class="stat-chip">📄 <span>${counts.file}</span></div>`:''}
+    ${total?`<div class="stat-chip">~${fmtBytes(total)}</div>`:''}
+  `;
+
+  state.files.forEach(f => {
+    const d = document.createElement('div');
+    d.className = 'file-item';
+    d.id = `fi-${f.id}`;
+    d.innerHTML = `
+      <div class="file-progress-bg" id="fpb-${f.id}"></div>
+      <input type="checkbox" id="chk-${f.id}" checked style="width:15px;height:15px;flex-shrink:0;accent-color:var(--accent)"
+        onchange="toggleSel(${f.id},this.checked)"/>
+      <div class="file-icon">${ICONS[f.type]||'📄'}</div>
+      <div class="file-info">
+        <div class="file-name" title="${f.name}">${f.name}</div>
+        <div class="file-meta">
+          <span class="badge badge-${f.type}">${f.type}</span>
+          <span>${fmtBytes(f.size)}</span>
+        </div>
+      </div>
+      <span class="file-status status-pending" id="fs-${f.id}">Pending</span>
+    `;
+    c.appendChild(d);
+  });
+}
+
+function toggleSel(id, checked) {
+  if (checked) state.selectedIds.add(id); else state.selectedIds.delete(id);
+}
+function selectAll(v) {
+  state.files.forEach(f => {
+    state.selectedIds[v?'add':'delete'](f.id);
+    const chk = document.getElementById(`chk-${f.id}`);
+    if (chk) chk.checked = v;
+  });
+}
+
+// ── Download all — sequential stream-and-delete ───────────────────────────────
+async function downloadAll() {
+  if (state.downloading) return;
+  const link = document.getElementById('channel-input').value.trim();
+  const ids = [...state.selectedIds];
+  if (!ids.length) { showAlert('alert-channel', 'Select at least one file.'); return; }
+
+  state.downloading = true;
+  state.done = 0;
+  state.total = ids.length;
+
+  // Show overall progress
+  const prog = document.getElementById('overall-progress');
+  prog.style.display = 'block';
+  updateProgress(0, ids.length);
+
+  // Open SSE
+  if (state.es) state.es.close();
+  state.es = new EventSource('/api/status');
+  state.es.onmessage = e => onSSE(JSON.parse(e.data));
+
+  setLoading('download-btn', true, '<span class="spinner"></span> Downloading…');
+
+  try {
+    await fetch('/api/channel/download', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ link, messageIds: ids })
+    });
+  } catch(e) {
+    showAlert('alert-channel', 'Download failed: ' + e.message);
+    state.downloading = false;
+  }
+}
+
+// ── SSE handler ───────────────────────────────────────────────────────────────
+function onSSE(data) {
+  if (data.type === 'start') {
+    const item = document.getElementById(`fi-${data.id}`);
+    const stat = document.getElementById(`fs-${data.id}`);
+    if (item) { item.classList.add('active-dl'); item.scrollIntoView({ behavior:'smooth', block:'nearest' }); }
+    if (stat) { stat.className = 'file-status status-active'; stat.textContent = 'Fetching…'; }
+
+  } else if (data.type === 'progress') {
+    const stat = document.getElementById(`fs-${data.id}`);
+    const fpb  = document.getElementById(`fpb-${data.id}`);
+    if (stat && data.size > 0) {
+      const pct = Math.round(data.downloaded / data.size * 100);
+      stat.className = 'file-status status-active';
+      stat.textContent = pct + '%';
+      if (fpb) fpb.style.transform = `scaleX(${data.downloaded/data.size})`;
+    }
+
+  } else if (data.type === 'ready') {
+    // Auto-trigger browser download
+    autoDownload(data.url, data.name);
+
+    const item = document.getElementById(`fi-${data.id}`);
+    const stat = document.getElementById(`fs-${data.id}`);
+    if (item) { item.classList.remove('active-dl'); item.classList.add('done'); }
+    if (stat) { stat.className = 'file-status status-done'; stat.textContent = '✓ Saved'; }
+
+    state.done++;
+    updateProgress(state.done, state.total);
+
+  } else if (data.type === 'error') {
+    const item = document.getElementById(`fi-${data.id}`);
+    const stat = document.getElementById(`fs-${data.id}`);
+    if (item) { item.classList.remove('active-dl'); item.classList.add('error-dl'); }
+    if (stat) { stat.className = 'file-status status-error'; stat.textContent = '✕ Error'; }
+    state.done++;
+    updateProgress(state.done, state.total);
+
+  } else if (data.type === 'complete') {
+    state.downloading = false;
+    if (state.es) { state.es.close(); state.es = null; }
+    document.getElementById('progress-fill').classList.add('complete');
+    document.getElementById('progress-label').textContent = '✅ All downloads triggered!';
+    document.getElementById('progress-sub').textContent = 'Check your device\'s Downloads folder.';
+    document.getElementById('download-btn').disabled = false;
+    document.getElementById('download-btn').innerHTML = '<span>⬇ Download All</span>';
+  }
+}
+
+// Create a hidden <a> and click it — triggers native browser download
+function autoDownload(url, filename) {
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename || 'file';
+  a.style.display = 'none';
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(() => document.body.removeChild(a), 2000);
+}
+
+function updateProgress(done, total) {
+  const pct = total > 0 ? Math.round(done/total*100) : 0;
+  document.getElementById('progress-fill').style.width = pct + '%';
+  document.getElementById('progress-pct').textContent = pct + '%';
+  document.getElementById('progress-label').textContent = `Downloading… (${done}/${total})`;
+  document.getElementById('progress-sub').textContent = `${done} of ${total} files — check your Downloads folder`;
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('phone-input').addEventListener('keydown', e => { if (e.key==='Enter') sendCode(); });
+  document.getElementById('otp-input').addEventListener('keydown',   e => { if (e.key==='Enter') verifyCode(); });
+  document.getElementById('channel-input').addEventListener('keydown', e => { if (e.key==='Enter') fetchFiles(); });
+  init();
+});
+</script>
+</body>
+</html>
